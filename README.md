@@ -1,4 +1,4 @@
-# Sistema Bancário Simples
+# Sistema Bancário New
 
 Este é um sistema bancário simples desenvolvido em Python, que permite realizar operações como depósito, saque, criação de contas de usuário e exibição de extrato.
 
