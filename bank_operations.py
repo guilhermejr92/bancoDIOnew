@@ -55,11 +55,27 @@ def exibir_extrato(saldo, /, *, extrato):
         saldo_atual = 0
         for movimentacao in extrato.split("\n"):
             if movimentacao:
-                data_hora, tipo_movimentacao, valor_str = movimentacao.split(
-                    "\t")
-                valor = float(valor_str.replace("R$ ", ""))
-                saldo_atual += valor
-                print("{:<20} {:<15} {:<10}".format(
-                    data_hora, tipo_movimentacao, valor_str))
+                # Adicionar esta linha para debug
+                print("Movimentação:", movimentacao)
+                partes = movimentacao.split("\t")
+                if len(partes) >= 3:
+                    data_hora = partes[0]
+                    tipo_movimentacao = partes[1]
+                    valor_str = partes[2]
+                    if valor_str:  # Verificar se valor_str não está vazio
+                        valor = float(valor_str.replace("R$ ", ""))
+                        saldo_atual += valor
+                        print("{:<20} {:<15} {:<10}".format(
+                            data_hora, tipo_movimentacao, valor_str))
+                    else:
+                        print("Erro: Valor inválido")
+                else:
+                    print("Erro: Formato de movimentação inválido")
+
+
+def filtrar_usuario(cpf, usuarios):
+    usuarios_filtrados = [
+        usuario for usuario in usuarios if usuario["cpf"] == cpf]
+    return usuarios_filtrados[0] if usuarios_filtrados else None
 
     print("=" * 45)

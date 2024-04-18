@@ -1,0 +1,13 @@
+[
+    {
+        "agencia": "0001",
+        "numero_conta": 1,
+        "usuario": {
+            "cpf": "13975851708",
+            "nome": "Gabriel Barbosa",
+            "data_nascimento": "30-08-1996",
+            "endereco": "S\u00e3o Bernardo do Campo, S\u00e3o Paulo"
+        },
+        "saldo": 0
+    }
+]

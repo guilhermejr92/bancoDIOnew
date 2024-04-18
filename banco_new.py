@@ -1,9 +1,10 @@
-import bank_operations
+import json
 import textwrap
+import datetime
 
 
-def menu():
-    menu = """\n
+def menu(contas):
+    menu_str = """\n
     ================ MENU ================
     [d]\tDepositar
     [s]\tSacar
@@ -13,7 +14,7 @@ def menu():
     [nu]\tNovo usuário
     [q]\tSair
     => """
-    return input(textwrap.dedent(menu))
+    return input(textwrap.dedent(menu_str))
 
 
 def validar_valor(mensagem):
@@ -31,7 +32,8 @@ def validar_valor(mensagem):
 def depositar(saldo, valor, extrato, /):
     if valor > 0:
         saldo += valor
-        extrato += f"Depósito:\tR$ {valor:.2f}\n"
+        data_hora = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        extrato += f"{data_hora}\tDepósito:\tR$ {valor:.2f}\n"
         print("\n=== Depósito realizado com sucesso! ===")
     else:
         print("\n@@@ Operação falhou! O valor informado é inválido. @@@")
@@ -55,7 +57,8 @@ def sacar(*, saldo, valor, extrato, limite, numero_saques, limite_saques):
 
     elif valor > 0:
         saldo -= valor
-        extrato += f"Saque:\t\tR$ {valor:.2f}\n"
+        data_hora = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        extrato += f"{data_hora}\tSaque:\t\tR$ {valor:.2f}\n"
         numero_saques += 1
         print("\n=== Saque realizado com sucesso! ===")
 
@@ -73,30 +76,28 @@ def exibir_extrato(saldo, /, *, extrato):
 
 
 def criar_usuario(usuarios):
-    while True:
-        try:
-            cpf = input("Informe o CPF (somente número): ")
-            if not cpf.isdigit():
-                raise ValueError("CPF deve conter apenas números.")
+    cpf = input("Informe o CPF (somente número): ")
+    usuario_existente = filtrar_usuario(cpf, usuarios)
 
-            usuario = bank_operations.filtrar_usuario(cpf, usuarios)
+    if usuario_existente:
+        print("\n@@@ Já existe usuário com esse CPF! @@@")
+        return None
 
-            if usuario:
-                print("\n@@@ Já existe usuário com esse CPF! @@@")
-            else:
-                nome = input("Informe o nome completo: ")
-                data_nascimento = input(
-                    "Informe a data de nascimento (dd-mm-aaaa): ")
-                endereco = input(
-                    "Informe o endereço (logradouro, nro - bairro - cidade/sigla estado): ")
+    nome = input("Informe o nome completo: ")
+    data_nascimento = input("Informe a data de nascimento (dd-mm-aaaa): ")
+    endereco = input(
+        "Informe o endereço (logradouro, nro - bairro - cidade/sigla estado): ")
 
-                usuarios.append(
-                    {"nome": nome, "data_nascimento": data_nascimento, "cpf": cpf, "endereco": endereco})
+    novo_usuario = {
+        "cpf": cpf,
+        "nome": nome,
+        "data_nascimento": data_nascimento,
+        "endereco": endereco
+    }
 
-                print("=== Usuário criado com sucesso! ===")
-                break
-        except ValueError as e:
-            print(f"Erro: {e}")
+    usuarios.append(novo_usuario)
+    print("=== Usuário criado com sucesso! ===")
+    return novo_usuario
 
 
 def filtrar_usuario(cpf, usuarios):
@@ -105,24 +106,22 @@ def filtrar_usuario(cpf, usuarios):
     return usuarios_filtrados[0] if usuarios_filtrados else None
 
 
-def criar_conta(agencia, numero_conta, usuarios):
-    while True:
-        try:
-            cpf = input("Informe o CPF do usuário: ")
-            if not cpf.isdigit():
-                raise ValueError("CPF deve conter apenas números.")
+def criar_conta(agencia, numero_conta, usuarios, contas):
+    usuario = criar_usuario(usuarios)
 
-            usuario = bank_operations.filtrar_usuario(cpf, usuarios)
-
-            if usuario:
-                print("\n=== Conta criada com sucesso! ===")
-                return {"agencia": agencia, "numero_conta": numero_conta, "usuario": usuario}
-            else:
-                print(
-                    "\n@@@ Usuário não encontrado, fluxo de criação de conta encerrado! @@@")
-                break
-        except ValueError as e:
-            print(f"Erro: {e}")
+    if usuario:
+        nova_conta = {
+            "agencia": agencia,
+            "numero_conta": numero_conta,
+            "usuario": usuario,
+            "saldo": 0,
+            "extrato": ""
+        }
+        contas.append(nova_conta)  # Adicione a nova conta à lista de contas
+        salvar_contas(contas)  # Salvar as contas no arquivo contas.json
+        return nova_conta
+    else:
+        return None
 
 
 def listar_contas(contas):
@@ -136,6 +135,38 @@ def listar_contas(contas):
         print(textwrap.dedent(linha))
 
 
+# Função para carregar as contas do arquivo JSON
+def carregar_contas():
+    try:
+        with open('contas.json', 'r') as file:
+            contas = json.load(file)
+    except FileNotFoundError:
+        contas = []
+    return contas
+
+
+# Função para salvar as contas no arquivo JSON
+def salvar_contas(contas):
+    with open('contas.json', 'w') as file:
+        json.dump(contas, file, indent=4)
+
+
+def escolher_conta(contas):
+    print("\n### Escolha a conta ###")
+    for i, conta in enumerate(contas):
+        print(f"{i + 1}: {conta['agencia']} - {conta['numero_conta']}")
+
+    while True:
+        try:
+            escolha = int(input("Escolha o número da conta: "))
+            if 1 <= escolha <= len(contas):
+                return contas[escolha - 1]
+            else:
+                print("Número de conta inválido, por favor tente novamente.")
+        except ValueError:
+            print("Por favor, insira um número válido.")
+
+
 def main():
     LIMITE_SAQUES = 3
     AGENCIA = "0001"
@@ -145,18 +176,24 @@ def main():
     extrato = ""
     numero_saques = 0
     usuarios = []
-    contas = []
+    contas = carregar_contas()  # Carregar as contas salvas
 
     while True:
-        opcao = menu()
+        opcao = menu(contas)
 
         if opcao == "d":
-            valor = validar_valor("Informe o valor do depósito: ")
-            saldo, extrato = bank_operations.depositar(saldo, valor, extrato)
+            conta = escolher_conta(contas)
+            if conta:
+                valor = validar_valor("Informe o valor do depósito: ")
+                saldo, extrato = depositar(
+                    conta['saldo'], valor, conta['extrato'])
+                conta['saldo'] = saldo
+                conta['extrato'] = extrato
+                salvar_contas(contas)  # Salvar as contas após o depósito
 
         elif opcao == "s":
             valor = validar_valor("Informe o valor do saque: ")
-            saldo, extrato = bank_operations.sacar(
+            saldo, extrato = sacar(
                 saldo=saldo,
                 valor=valor,
                 extrato=extrato,
@@ -166,14 +203,17 @@ def main():
             )
 
         elif opcao == "e":
-            bank_operations.exibir_extrato(saldo, extrato=extrato)
+            conta = escolher_conta(contas)
+            if conta:
+                exibir_extrato(conta['saldo'], extrato=conta['extrato'])
 
         elif opcao == "nu":
             criar_usuario(usuarios)
 
         elif opcao == "nc":
             numero_conta = len(contas) + 1
-            conta = criar_conta(AGENCIA, numero_conta, usuarios)
+            conta = criar_conta(
+                AGENCIA, numero_conta, usuarios, contas)
 
             if conta:
                 contas.append(conta)
@@ -188,4 +228,5 @@ def main():
             print("Operação inválida, por favor selecione novamente a operação desejada.")
 
 
-main()
+if __name__ == "__main__":
+    main()
